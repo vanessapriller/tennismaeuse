@@ -311,10 +311,7 @@
   "use strict";
 
   // ====== EINRICHTUNG ======
-  // Firebase-Datenbank-URL. Es kann dieselbe Datenbank wie bei Papas App sein:
-  // Die Daten der Tennismäuse liegen in einem eigenen Ordner (DB_ROOT) und
-  // kommen seinen Daten nicht in die Quere.
-  var FIREBASE_DB_URL = "https://DEIN-PROJEKT-ID-default-rtdb.europe-west1.firebasedatabase.app";
+  var FIREBASE_DB_URL = "https://tennismaeuse-default-rtdb.europe-west1.firebasedatabase.app";
   var DB_ROOT = "/tennismaeuse";
   // ==========================
 
@@ -855,7 +852,7 @@
     var prev = entry.players[slot];
     if(name && !isGuest(name)){
       var other = entry.players.indexOf(name);
-      if(other !== -1 && other !== slot) entry.players[other] = prev; // tauschen
+      if(other !== -1 && other !== slot) entry.players[other] = prev;
       entry.absent = entry.absent.filter(function(a){ return a !== name; });
     }
     entry.players[slot] = name;
@@ -975,7 +972,6 @@
     setTimeout(function(){ btn.classList.remove("spin"); }, 400);
   });
 
-  // Alle 12 Sekunden abgleichen – aber nicht, während jemand gerade tippt.
   setInterval(async function(){
     if(!isConfigured() || overlay.classList.contains("open")) return;
     var a = document.activeElement;
