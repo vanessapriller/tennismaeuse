@@ -218,6 +218,17 @@
   .guest-input-row button{padding:0 16px; border-radius:12px; border:none; background:var(--ball); color:var(--ball-ink); font-weight:700; cursor:pointer; font-family:'Inter',sans-serif;}
   .sheet-close{display:block; margin:14px auto 0; background:none; border:none; color:var(--ink-soft); font-size:13px; cursor:pointer; text-decoration:underline;}
 
+  .changes{margin-top:10px; padding:9px 11px; background:#FBF1EB; border:1px solid var(--clay-soft); border-radius:10px; font-size:12.5px; color:var(--ink);}
+  .changes p{margin:3px 0; display:flex; align-items:center; gap:6px;}
+  .changes .ch-text{flex:1; min-width:0;}
+  .changes .when{color:var(--ink-soft);}
+  .changes .ch-title{font-weight:700; color:var(--clay); margin:0 0 4px;}
+  .changes .ch-del{border:none; background:none; color:var(--ink-soft); font-size:16px; line-height:1; cursor:pointer; padding:0 2px;}
+  .reason-label{font-size:12.5px; color:var(--ink-soft); margin:0 0 6px;}
+  .reason-row{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 14px;}
+  .reason-row button{border:1px solid var(--line); background:var(--chalk); border-radius:14px; padding:6px 13px; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; color:var(--ink);}
+  .reason-row button.on{background:var(--ink); color:var(--chalk); border-color:var(--ink);}
+
   .toast{
     position:fixed; bottom:calc(18px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--ink); color:var(--chalk); padding:10px 18px; border-radius:20px; font-size:13px;
@@ -295,6 +306,10 @@
     <div class="drag-handle"></div>
     <h3 id="sheetTitle">Platz besetzen</h3>
     <p class="sub" id="sheetSub"></p>
+    <div id="reasonWrap" style="display:none;">
+      <p class="reason-label">Grund (optional)</p>
+      <div class="reason-row" id="reasonRow"></div>
+    </div>
     <div class="sheet-options" id="sheetOptions"></div>
     <div class="guest-input-row" id="guestRow">
       <input id="guestInput" type="text" placeholder="Name der Gastspielerin" maxlength="24">
@@ -328,6 +343,8 @@
     "Anna-Lena":"#C2614A"
   };
   var SLOTS = 4;
+  var REASONS = ["krank","verletzt","verhindert","Urlaub"];
+  var sheetReason = "";
   var DEFAULT_SETTINGS = {ort:"", zeit:"", preis:""};
 
   // "" = Platz frei (im Plan mit X markiert)
@@ -363,6 +380,8 @@
   var guestRow = document.getElementById("guestRow");
   var guestInput = document.getElementById("guestInput");
   var toastEl = document.getElementById("toast");
+  var reasonWrap = document.getElementById("reasonWrap");
+  var reasonRow = document.getElementById("reasonRow");
 
   // ---------- Hilfsfunktionen ----------
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -414,6 +433,20 @@
     if(!Array.isArray(ab)) ab = Object.keys(ab).map(function(k){ return ab[k]; });
     e.absent = ab.filter(Boolean);
     e.holiday = !!e.holiday;
+    // Ursprünglicher Plan: aus dem Aboplan übernehmen, falls noch nicht gespeichert
+    var plan = e.planned;
+    if(!plan){
+      var def = DEFAULT_SCHEDULE.filter(function(d){ return d.date === e.date; })[0];
+      plan = def ? def.players : pl;
+    }
+    var planned = [];
+    for(var j=0;j<SLOTS;j++){ planned.push(plan[j] ? plan[j] : ""); }
+    e.planned = planned;
+    var lg = e.log || [];
+    if(!Array.isArray(lg)) lg = Object.keys(lg).map(function(k){ return lg[k]; });
+    e.log = lg.filter(function(x){ return x && x.ts; }).map(function(x){
+      return {ts:x.ts, from:x.from||"", to:x.to||"", reason:x.reason||""};
+    }).sort(function(a,b){ return a.ts - b.ts; });
     return e;
   }
   function normalizeSchedule(data){
@@ -431,11 +464,11 @@
       if(data){
         schedule = normalizeSchedule(data);
       }else{
-        schedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
+        schedule = normalizeSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)));
         await saveSchedule(true);
       }
     }catch(e){
-      if(!schedule) schedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
+      if(!schedule) schedule = normalizeSchedule(JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)));
       showToast("Keine Verbindung zur Datenbank – bitte Internet prüfen.");
     }
   }
@@ -642,6 +675,27 @@
     return '<p class="absent"><b>Spielt nicht:</b> '+esc(entry.absent.join(", "))+'</p>';
   }
 
+  function samePlayers(a, b){
+    return a.filter(Boolean).slice().sort().join("|") === b.filter(Boolean).slice().sort().join("|");
+  }
+  function fmtShortTs(ts){ var d = new Date(ts); return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."; }
+  function changesHtml(entry, dateIdx){
+    var differs = !samePlayers(entry.players, entry.planned);
+    if(!entry.log.length && !differs) return "";
+    var html = '<div class="changes"><p class="ch-title">Änderungen</p>';
+    if(differs){
+      var pl = entry.planned.filter(Boolean);
+      html += '<p><span class="ch-text"><b>Laut Plan:</b> '+(pl.length ? esc(pl.map(playerLabel).join(", ")) : "–")+'</span></p>';
+    }
+    entry.log.forEach(function(l, k){
+      html += '<p><span class="ch-text">'+esc(playerLabel(l.from))+' → '+esc(playerLabel(l.to))
+        + (l.reason ? ' · '+esc(l.reason) : '')
+        + ' <span class="when">('+fmtShortTs(l.ts)+')</span></span>'
+        + '<button class="ch-del" data-log-del="'+dateIdx+':'+k+'" aria-label="Vermerk löschen">×</button></p>';
+    });
+    return html + '</div>';
+  }
+
   function renderHero(){
     var idx = findNextIndex();
     var lines = '<svg class="hero-lines" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="2"><rect x="10" y="10" width="80" height="80"/><line x1="10" y1="50" x2="90" y2="50"/><line x1="25" y1="10" x2="25" y2="90"/><line x1="75" y1="10" x2="75" y2="90"/><line x1="50" y1="30" x2="50" y2="70"/></svg>';
@@ -665,7 +719,7 @@
     if(entry.holiday) html += '<span class="tag on-dark">Feiertag – Termin unsicher</span>';
     html += '</div></div><div class="perforation"></div><div class="hero-bottom"><div class="players-grid">';
     for(var s=0;s<SLOTS;s++) html += renderChip(entry.players[s], idx, s);
-    html += '</div>' + absentHtml(entry)
+    html += '</div>' + absentHtml(entry) + changesHtml(entry, idx)
       + '<p class="hint">'+(free ? 'Wer einspringen kann, tippt auf „Platz frei“. ' : '')+'Namen antippen, um zu tauschen oder einen Gast einzutragen.</p></div>';
     heroEl.innerHTML = html;
   }
@@ -691,7 +745,7 @@
         + '<input type="date" class="date-edit-input" data-date-idx="'+i+'" value="'+entry.date+'"></span>'+tags+'</div>'
         + '<div class="row-players">';
       for(var s=0;s<SLOTS;s++) html += renderChip(entry.players[s], i, s);
-      html += '</div>'+absentHtml(entry)+'</div>';
+      html += '</div>'+absentHtml(entry)+changesHtml(entry, i)+'</div>';
     });
     seasonEl.innerHTML = html + "</div></div>";
   }
@@ -799,7 +853,21 @@
         + '<span class="stats-bar-wrap"><span class="stats-bar" style="width:'+Math.round(guests/max*100)+'%;background:var(--clay);"></span></span>'
         + '<span class="stats-num">'+guests+(guests===1?' Einsatz':' Einsätze')+(hasPreis?' · €'+Math.round(guests*proEinsatz):'')+'</span></div>';
     }
-    html += '</div><p class="stats-note">'+schedule.length+' Termine, '+total+' belegte Plätze, '+(schedule.length*SLOTS-total)+' Plätze frei. ';
+    var absagen = {};
+    schedule.forEach(function(entry){
+      entry.log.forEach(function(l){
+        if(PLAYERS.indexOf(l.from) !== -1){
+          absagen[l.from] = absagen[l.from] || {n:0, reasons:{}};
+          absagen[l.from].n++;
+          if(l.reason) absagen[l.from].reasons[l.reason] = (absagen[l.from].reasons[l.reason]||0)+1;
+        }
+      });
+    });
+    var absagenText = PLAYERS.filter(function(p){ return absagen[p]; }).map(function(p){
+      var r = Object.keys(absagen[p].reasons).map(function(k){ return absagen[p].reasons[k]+"× "+k; });
+      return esc(p)+' '+absagen[p].n+(r.length ? ' ('+esc(r.join(", "))+')' : '');
+    });
+    html += '</div><p class="stats-note">'+(absagenText.length ? '<b>Kurzfristige Ausfälle:</b> '+absagenText.join(" · ")+'<br>' : '')+schedule.length+' Termine, '+total+' belegte Plätze, '+(schedule.length*SLOTS-total)+' Plätze frei. ';
     html += hasPreis
       ? 'Der Abopreis von €'+preis.toFixed(2).replace(".",",")+' wird auf die tatsächlich belegten Plätze aufgeteilt (≈ €'+proEinsatz.toFixed(2).replace(".",",")+' pro Einsatz). Wer öfter spielt, zahlt mehr.'
       : 'Sobald unten der Abopreis eingetragen ist, rechnet die App die Kostenanteile mit.';
@@ -839,10 +907,26 @@
       html += '<button data-name="" >'+avatarHtml("")+'<span>Platz freigeben</span></button>';
     }
     sheetOptions.innerHTML = html;
+    sheetReason = "";
+    reasonWrap.style.display = (!isFree(current) && !isGuest(current)) ? "" : "none";
+    renderReasons();
     guestRow.classList.remove("open");
     guestInput.value = guestName(current);
     overlay.classList.add("open");
   }
+  function renderReasons(){
+    reasonRow.innerHTML = REASONS.map(function(r){
+      return '<button data-reason="'+esc(r)+'" class="'+(r===sheetReason?'on':'')+'">'+esc(r)+'</button>';
+    }).join("");
+  }
+  reasonRow.addEventListener("click", function(e){
+    var b = e.target.closest("[data-reason]");
+    if(!b) return;
+    var r = b.getAttribute("data-reason");
+    sheetReason = (sheetReason === r) ? "" : r;
+    renderReasons();
+  });
+
   function closeSheet(){ overlay.classList.remove("open"); editTarget = null; }
 
   async function applyChoice(name){
@@ -850,12 +934,17 @@
     var entry = schedule[editTarget.dateIdx];
     var slot = editTarget.slotIdx;
     var prev = entry.players[slot];
-    if(name && !isGuest(name)){
-      var other = entry.players.indexOf(name);
-      if(other !== -1 && other !== slot) entry.players[other] = prev;
-      entry.absent = entry.absent.filter(function(a){ return a !== name; });
-    }
+    if(prev === name){ closeSheet(); return; }
+    var other = (name && !isGuest(name)) ? entry.players.indexOf(name) : -1;
+    var isSwap = other !== -1 && other !== slot;
+    if(isSwap) entry.players[other] = prev; // nur Plätze getauscht, beide spielen weiter
+    if(name && !isGuest(name)) entry.absent = entry.absent.filter(function(a){ return a !== name; });
     entry.players[slot] = name;
+    if(!isSwap){
+      var regularPrev = prev && !isGuest(prev);
+      entry.log.push({ts:Date.now(), from:prev||"", to:name||"", reason: regularPrev ? sheetReason : ""});
+      if(regularPrev && entry.players.indexOf(prev) === -1 && entry.absent.indexOf(prev) === -1) entry.absent.push(prev);
+    }
     closeSheet();
     renderAll();
     var ok = await saveSchedule(false);
@@ -888,6 +977,17 @@
     var chip = t.closest(".chip");
     if(chip && chip.dataset.dateIdx !== undefined){
       openSheet(parseInt(chip.dataset.dateIdx,10), parseInt(chip.dataset.slotIdx,10));
+      return;
+    }
+    var ld = t.closest("[data-log-del]");
+    if(ld){
+      var parts = ld.getAttribute("data-log-del").split(":");
+      var en = schedule[parseInt(parts[0],10)];
+      if(en && confirm("Diesen Vermerk löschen? Die Aufstellung bleibt, wie sie ist.")){
+        en.log.splice(parseInt(parts[1],10),1);
+        renderAll();
+        saveSchedule(false);
+      }
       return;
     }
     var add = t.closest("[data-runde-add]");
@@ -972,6 +1072,7 @@
     setTimeout(function(){ btn.classList.remove("spin"); }, 400);
   });
 
+  // Alle 12 Sekunden abgleichen – aber nicht, während jemand gerade tippt.
   setInterval(async function(){
     if(!isConfigured() || overlay.classList.contains("open")) return;
     var a = document.activeElement;
