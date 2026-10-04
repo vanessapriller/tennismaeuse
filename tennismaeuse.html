@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="de-AT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Tennismäuse · Winterabo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --chalk:#F8F3F0;
+    --paper:#FFFFFF;
+    --ink:#2A1F26;
+    --ink-soft:#6E5F68;
+    --line:#E6DCD9;
+    --ball:#D4E23C;
+    --ball-ink:#3A4410;
+    --clay:#B5532F;
+    --clay-soft:#F5E0D5;
+    --court:#8A3E63;
+    --court-deep:#4E2238;
+    --shadow:0 10px 28px rgba(42,31,38,0.13);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--chalk);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));
+  }
+  #courtBg{position:fixed; inset:-60px; pointer-events:none; filter:blur(26px) saturate(1.1); transform:scale(1.1); z-index:-2;}
+  #courtBg svg{width:100%; height:100%; display:block;}
+  #courtBgOverlay{position:fixed; inset:0; pointer-events:none; background:rgba(248,243,240,0.84); z-index:-1;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:rgba(248,243,240,0.93);
+    backdrop-filter:blur(6px);
+    padding:calc(16px + env(safe-area-inset-top,0px)) 18px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px;
+  }
+  header.top .emblem{width:30px;height:30px;flex-shrink:0;}
+  header.top .titles{flex:1; min-width:0;}
+  header.top h1{font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:24px; margin:0; line-height:1.1;}
+  header.top p{margin:1px 0 0; font-size:12.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .refresh-btn{
+    border:1px solid var(--line); background:var(--paper); border-radius:20px;
+    width:36px;height:36px; display:flex;align-items:center;justify-content:center;
+    color:var(--ink-soft); cursor:pointer; flex-shrink:0;
+  }
+  .refresh-btn svg{width:16px;height:16px;}
+  .refresh-btn.spin svg{animation:spin 0.7s linear;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  main{max-width:520px; margin:0 auto; padding:0 16px;}
+
+  .hero{margin-top:18px; border-radius:20px; box-shadow:var(--shadow); animation:heroIn .5s ease both;}
+  @keyframes heroIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+  .hero-top{
+    color:var(--chalk); border-radius:20px 20px 0 0; padding:20px 20px 24px;
+    position:relative; overflow:hidden;
+    background:linear-gradient(155deg, var(--court) 0%, var(--court-deep) 100%);
+  }
+  .hero-lines{position:absolute; right:-30px; bottom:-40px; width:220px; height:220px; opacity:0.18; pointer-events:none;}
+  .hero-content{position:relative; z-index:1;}
+  .hero-top .label{font-size:13px; color:rgba(248,243,240,0.78); margin:0 0 6px;}
+  .hero-top .date-row{display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .hero-top .date-main{font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:29px; line-height:1.05;}
+  .countdown{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px;
+    background:var(--ball); color:var(--ball-ink); padding:5px 13px; border-radius:14px; white-space:nowrap;
+  }
+  .hero-top .meta{font-size:13px; color:rgba(248,243,240,0.82); margin-top:5px;}
+  .tag{display:inline-block; margin:9px 6px 0 0; font-size:12.5px; padding:4px 10px; border-radius:10px;}
+  .tag.holiday{color:var(--clay); background:var(--clay-soft);}
+  .tag.on-dark{color:var(--chalk); background:rgba(248,243,240,0.18);}
+  .tag.free{color:var(--ball-ink); background:var(--ball);}
+  .perforation{
+    position:relative; height:2px; margin:0 18px;
+    background-image:repeating-linear-gradient(to right, rgba(42,31,38,0.28) 0 8px, transparent 8px 16px);
+  }
+  .perforation::before,.perforation::after{content:""; position:absolute; top:-11px; width:22px; height:22px; border-radius:50%; background:var(--chalk);}
+  .perforation::before{left:-29px;}
+  .perforation::after{right:-29px;}
+  .hero-bottom{background:var(--paper); border-radius:0 0 20px 20px; padding:20px;}
+  .players-grid{display:grid; grid-template-columns:1fr 1fr; gap:9px;}
+  .chip{
+    border:1px solid var(--line); background:var(--chalk); border-radius:12px;
+    padding:8px 12px 8px 8px; font-size:14.5px; font-weight:600; text-align:left; cursor:pointer;
+    display:flex; align-items:center; gap:9px; min-height:46px;
+    font-family:'Inter',sans-serif; color:var(--ink);
+  }
+  .chip:active{transform:scale(0.98);}
+  .avatar{
+    width:28px;height:28px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff; font-size:11px; font-weight:700; flex-shrink:0; letter-spacing:0.2px;
+  }
+  .chip.guest{border-style:dashed; border-color:var(--clay); background:#fff; color:var(--clay);}
+  .chip.guest .avatar{background:transparent; border:1.5px dashed var(--clay); color:var(--clay);}
+  .chip.free{border-style:dashed; border-color:#B9AAB2; background:transparent; color:var(--ink-soft); font-weight:500;}
+  .chip.free .avatar{background:transparent; border:1.5px dashed #B9AAB2; color:var(--ink-soft); font-size:15px;}
+  .hint{font-size:12.5px; color:var(--ink-soft); margin:14px 2px 0; line-height:1.5;}
+  .absent{font-size:12.5px; color:var(--ink-soft); margin:10px 2px 0;}
+  .absent b{font-weight:600; color:var(--ink);}
+  .hero-empty{margin:0; font-size:15px;}
+
+  .segmented{display:flex; margin:22px 0 4px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:4px;}
+  .segmented button{
+    flex:1; border:none; background:transparent; padding:9px 0; font-size:13.5px; font-weight:600;
+    color:var(--ink-soft); border-radius:10px; cursor:pointer; font-family:'Inter',sans-serif;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .segmented button svg{width:15px;height:15px;}
+  .segmented button.active{background:var(--ink); color:var(--chalk);}
+
+  .month-group{margin-top:24px;}
+  .month-title{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; color:var(--court); margin:0 0 4px 2px;}
+  .net-divider{
+    height:5px; margin:0 0 14px 2px; border-top:2px solid var(--line);
+    background-image:repeating-linear-gradient(to right, var(--line) 0 2px, transparent 2px 9px);
+    background-repeat:repeat-x; background-size:9px 5px;
+  }
+  .timeline{position:relative; padding-left:16px;}
+  .timeline::before{content:""; position:absolute; left:4px; top:4px; bottom:4px; width:1.5px; background:var(--line);}
+  .row{position:relative; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:12px 14px;}
+  .row::before{content:""; position:absolute; left:-16px; top:19px; width:7px; height:7px; border-radius:50%; background:var(--court); box-shadow:0 0 0 3px var(--chalk);}
+  .row.past{opacity:0.5;}
+  .row.past::before{background:var(--ink-soft);}
+  .row-date-wrap{display:flex; align-items:center; width:100%; justify-content:space-between; margin-bottom:9px; gap:8px;}
+  .row-date{font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:8px;}
+  .row-date .wk{color:var(--ink-soft); font-weight:500;}
+  .row-date-wrap .tag{margin:0;}
+  .date-edit-input{border:none; background:transparent; font:inherit; font-weight:700; color:var(--ink); padding:0; cursor:pointer; font-family:'Inter',sans-serif;}
+  .row-players{display:flex; flex-wrap:wrap; gap:6px;}
+  .row-players .chip{padding:5px 10px 5px 5px; font-size:13px; min-height:0;}
+  .row-players .avatar{width:22px;height:22px; font-size:9px;}
+  .row-players .chip.free .avatar{font-size:12px;}
+  .row .absent{margin-top:8px;}
+
+  .stats-table{margin-top:16px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--paper);}
+  .stats-row{display:flex; align-items:center; gap:11px; padding:13px 14px; border-bottom:1px solid var(--line);}
+  .stats-row:last-child{border-bottom:none;}
+  .stats-name{width:78px; font-weight:600; font-size:14px; flex-shrink:0;}
+  .stats-bar-wrap{flex:1; background:var(--chalk); border-radius:6px; height:8px; overflow:hidden;}
+  .stats-bar{display:block; height:100%; border-radius:6px;}
+  .stats-num{width:104px; text-align:right; font-size:12.5px; color:var(--ink-soft); flex-shrink:0;}
+  .stats-note{font-size:12.5px; color:var(--ink-soft); margin:12px 4px 0; line-height:1.55;}
+
+  .settings{background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px;}
+  .settings label{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft);}
+  .settings label span{width:92px; flex-shrink:0;}
+  .settings input{flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid var(--line); background:var(--chalk); font-size:14px; font-family:'Inter',sans-serif; color:var(--ink);}
+
+  .runde-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:5px;}
+  .runde-meta{font-size:11.5px; color:var(--ink-soft);}
+  .runde-add{
+    width:36px; height:36px; border-radius:50%; border:none; flex-shrink:0;
+    background:var(--ball); color:var(--ball-ink); font-size:22px; font-weight:700; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif;
+  }
+  .runde-add:active{transform:scale(0.92);}
+  .runde-sub{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; margin:20px 0 8px 2px;}
+  .runde-log{display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--paper); border:1px solid var(--line); border-radius:12px; margin-bottom:6px;}
+  .runde-log .avatar{width:24px; height:24px; font-size:9px;}
+  .runde-log .log-text{flex:1; min-width:0; font-size:13px;}
+  .log-paid{border:1px solid var(--clay); color:var(--clay); background:var(--clay-soft); border-radius:10px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;}
+  .log-paid.is-paid{border-color:var(--court); color:var(--chalk); background:var(--court);}
+  .log-del{border:none; background:none; color:var(--ink-soft); font-size:20px; line-height:1; cursor:pointer; padding:0 4px;}
+
+  .bilanz-table{margin-top:16px; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--paper);}
+  .bilanz-row{display:flex; align-items:center; gap:11px; padding:12px 14px; border-bottom:1px solid var(--line);}
+  .bilanz-row:last-child{border-bottom:none;}
+  .bilanz-name{width:74px; font-weight:600; font-size:13.5px; flex-shrink:0;}
+  .bilanz-bar-wrap{flex:1; display:flex; height:8px; border-radius:6px; overflow:hidden; background:var(--chalk);}
+  .bilanz-bar-win{height:100%; background:var(--court);}
+  .bilanz-bar-loss{height:100%; background:var(--clay-soft);}
+  .bilanz-num{width:70px; text-align:right; font-size:12px; color:var(--ink-soft); flex-shrink:0;}
+  .match-teams{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .team-selects{flex:1; display:flex; flex-direction:column; gap:6px; min-width:0;}
+  .team-select{width:100%; padding:7px 8px; border-radius:9px; border:1px solid var(--line); background:var(--chalk); font-size:13px; font-family:'Inter',sans-serif; color:var(--ink);}
+  .team-static{padding:7px 8px; font-size:13px;}
+  .vs-label{font-size:11.5px; color:var(--ink-soft); font-weight:700; flex-shrink:0;}
+  .sets-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .sets-row .set-label{width:52px; font-size:12px; color:var(--ink-soft); flex-shrink:0;}
+  .sets-row input{width:44px; padding:6px 4px; text-align:center; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:'Inter',sans-serif;}
+  .sets-row .colon{color:var(--ink-soft); font-weight:700;}
+  .link-btn{background:none; border:none; color:var(--court); font-size:12.5px; text-decoration:underline; cursor:pointer; padding:2px 0; font-family:'Inter',sans-serif;}
+  .status-badge{display:inline-block; margin-top:6px; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:10px; background:var(--chalk); color:var(--ink-soft);}
+  .status-badge.decided{background:var(--court); color:var(--chalk);}
+  .status-badge.tied{background:var(--clay-soft); color:var(--clay);}
+
+  .overlay{position:fixed; inset:0; background:rgba(42,31,38,0.38); display:flex; align-items:flex-end; justify-content:center; z-index:50; opacity:0; pointer-events:none; transition:opacity 0.22s ease;}
+  .overlay.open{opacity:1; pointer-events:auto;}
+  .sheet{
+    background:var(--paper); width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+    border-radius:22px 22px 0 0; padding:10px 18px calc(26px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -10px 32px rgba(0,0,0,0.2); transform:translateY(100%); transition:transform 0.28s cubic-bezier(.32,.72,0,1);
+  }
+  .overlay.open .sheet{transform:translateY(0);}
+  .drag-handle{width:36px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 14px;}
+  .sheet h3{margin:0 0 4px; font-size:16px;}
+  .sheet .sub{font-size:12.5px; color:var(--ink-soft); margin:0 0 14px;}
+  .sheet-options{display:flex; flex-direction:column; gap:7px;}
+  .sheet-options button{
+    text-align:left; padding:10px 12px; border-radius:12px; border:1px solid var(--line); border-left:4px solid transparent;
+    background:var(--chalk); display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600;
+    font-family:'Inter',sans-serif; cursor:pointer; color:var(--ink);
+  }
+  .sheet-options button .note{margin-left:auto; font-size:11.5px; font-weight:500; color:var(--ink-soft);}
+  .sheet-options button.current{font-weight:700;}
+  .guest-input-row{display:none; gap:8px; margin-top:10px;}
+  .guest-input-row.open{display:flex;}
+  .guest-input-row input{flex:1; min-width:0; padding:11px 12px; border-radius:12px; border:1px solid var(--line); font-size:15px; font-family:'Inter',sans-serif;}
+  .guest-input-row button{padding:0 16px; border-radius:12px; border:none; background:var(--ball); color:var(--ball-ink); font-weight:700; cursor:pointer; font-family:'Inter',sans-serif;}
+  .sheet-close{display:block; margin:14px auto 0; background:none; border:none; color:var(--ink-soft); font-size:13px; cursor:pointer; text-decoration:underline;}
+
+  .toast{
+    position:fixed; bottom:calc(18px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--chalk); padding:10px 18px; border-radius:20px; font-size:13px;
+    opacity:0; transition:all 0.25s ease; z-index:60; pointer-events:none; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="courtBg">
+  <svg viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2A1724"/>
+        <stop offset="50%" stop-color="#5A2A43"/>
+        <stop offset="100%" stop-color="#B5532F"/>
+      </linearGradient>
+      <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FFF1E2" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#FFF1E2" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="400" height="600" fill="url(#skyGrad)"/>
+    <circle cx="55" cy="85" r="130" fill="url(#glow)"/>
+    <circle cx="350" cy="55" r="150" fill="url(#glow)"/>
+    <polygon points="70,600 330,600 260,300 140,300" fill="#C46A45" opacity="0.9"/>
+    <polygon points="70,600 330,600 260,300 140,300" fill="none" stroke="#FBEFE8" stroke-width="3" opacity="0.5"/>
+    <line x1="200" y1="600" x2="200" y2="300" stroke="#FBEFE8" stroke-width="2" opacity="0.4"/>
+    <line x1="110" y1="430" x2="290" y2="430" stroke="#FBEFE8" stroke-width="2" opacity="0.4"/>
+  </svg>
+</div>
+<div id="courtBgOverlay"></div>
+
+<header class="top">
+  <svg class="emblem" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <circle cx="16" cy="16" r="14" fill="#D4E23C"/>
+    <path d="M4 10c5 3 5 9 0 12" stroke="#3A4410" stroke-width="1.6" fill="none"/>
+    <path d="M28 10c-5 3-5 9 0 12" stroke="#3A4410" stroke-width="1.6" fill="none"/>
+  </svg>
+  <div class="titles">
+    <h1>Tennismäuse</h1>
+    <p id="headerSub">Winterabo 2026/27 · freitags, 14-täglich</p>
+  </div>
+  <button class="refresh-btn" id="refreshBtn" title="Aktualisieren" aria-label="Aktualisieren">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg>
+  </button>
+</header>
+
+<main>
+  <div class="hero" id="hero"></div>
+
+  <div class="segmented">
+    <button id="tabSeason" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Saison
+    </button>
+    <button id="tabResults">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M6 3h12v4a6 6 0 0 1-12 0V3ZM6 5H3v2a4 4 0 0 0 3 3.87M18 5h3v2a4 4 0 0 1-3 3.87"/></svg>
+      Ergebnisse
+    </button>
+    <button id="tabStats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      Statistik
+    </button>
+  </div>
+
+  <div id="seasonView"></div>
+  <div id="resultsView" style="display:none;"></div>
+  <div id="statsView" style="display:none;"></div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="drag-handle"></div>
+    <h3 id="sheetTitle">Platz besetzen</h3>
+    <p class="sub" id="sheetSub"></p>
+    <div class="sheet-options" id="sheetOptions"></div>
+    <div class="guest-input-row" id="guestRow">
+      <input id="guestInput" type="text" placeholder="Name der Gastspielerin" maxlength="24">
+      <button id="guestConfirm">Übernehmen</button>
+    </div>
+    <button class="sheet-close" id="sheetClose">Abbrechen</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ====== EINRICHTUNG ======
+  // Firebase-Datenbank-URL. Es kann dieselbe Datenbank wie bei Papas App sein:
+  // Die Daten der Tennismäuse liegen in einem eigenen Ordner (DB_ROOT) und
+  // kommen seinen Daten nicht in die Quere.
+  var FIREBASE_DB_URL = "https://DEIN-PROJEKT-ID-default-rtdb.europe-west1.firebasedatabase.app";
+  var DB_ROOT = "/tennismaeuse";
+  // ==========================
+
+  function isConfigured(){ return FIREBASE_DB_URL.indexOf("DEIN-PROJEKT-ID") === -1; }
+  function dbUrl(path){ return FIREBASE_DB_URL + DB_ROOT + path + ".json"; }
+
+  var PLAYERS = ["Julia","Vanessa","Magda","Nina","Melina","Anna-Lena"];
+  var PLAYER_COLORS = {
+    "Julia":"#3F84BF",
+    "Vanessa":"#B8930C",
+    "Magda":"#3D8F55",
+    "Nina":"#A9529A",
+    "Melina":"#D9771A",
+    "Anna-Lena":"#C2614A"
+  };
+  var SLOTS = 4;
+  var DEFAULT_SETTINGS = {ort:"", zeit:"", preis:""};
+
+  // "" = Platz frei (im Plan mit X markiert)
+  var DEFAULT_SCHEDULE = [
+    {date:"2026-10-02", holiday:false, players:["Julia","Vanessa","Magda","Nina"], absent:["Melina","Anna-Lena"]},
+    {date:"2026-10-16", holiday:false, players:["Julia","Vanessa","",""], absent:["Magda","Nina","Melina","Anna-Lena"]},
+    {date:"2026-10-30", holiday:false, players:["Anna-Lena","Vanessa","",""], absent:["Melina","Magda","Nina","Julia"]},
+    {date:"2026-11-13", holiday:false, players:["Julia","Vanessa","",""], absent:["Nina","Melina","Magda","Anna-Lena"]},
+    {date:"2026-11-27", holiday:false, players:["Anna-Lena","Vanessa","Magda","Nina"], absent:["Melina","Julia"]},
+    {date:"2026-12-11", holiday:false, players:["Vanessa","Magda","Melina",""], absent:["Julia","Anna-Lena","Nina"]},
+    {date:"2026-12-25", holiday:true,  players:["Anna-Lena","Vanessa","",""], absent:["Melina","Julia","Nina","Magda"]},
+    {date:"2027-01-08", holiday:false, players:["Anna-Lena","Magda","Melina","Nina"], absent:["Julia"]},
+    {date:"2027-01-22", holiday:false, players:["Julia","Magda","Melina","Nina"], absent:[]},
+    {date:"2027-02-05", holiday:false, players:["Julia","Anna-Lena","Vanessa","Magda"], absent:["Nina","Melina"]},
+    {date:"2027-02-19", holiday:false, players:["Julia","Anna-Lena","Melina","Nina"], absent:[]},
+    {date:"2027-03-05", holiday:false, players:["Anna-Lena","Magda","Melina","Nina"], absent:[]},
+    {date:"2027-03-19", holiday:false, players:["Julia","Magda","Melina","Nina"], absent:[]}
+  ];
+
+  var schedule = null;
+  var settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  var editTarget = null;
+  var expandedThirdSet = {};
+
+  var heroEl = document.getElementById("hero");
+  var seasonEl = document.getElementById("seasonView");
+  var resultsEl = document.getElementById("resultsView");
+  var statsEl = document.getElementById("statsView");
+  var overlay = document.getElementById("overlay");
+  var sheetOptions = document.getElementById("sheetOptions");
+  var sheetSub = document.getElementById("sheetSub");
+  var sheetTitle = document.getElementById("sheetTitle");
+  var guestRow = document.getElementById("guestRow");
+  var guestInput = document.getElementById("guestInput");
+  var toastEl = document.getElementById("toast");
+
+  // ---------- Hilfsfunktionen ----------
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function pad(n){ return n<10 ? "0"+n : ""+n; }
+  function parseDate(iso){ var p = iso.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function todayMidnight(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function isoToday(){ var d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function fmtDDMMYYYY(d){ return pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear(); }
+  function weekdayShort(d){ return d.toLocaleDateString("de-AT",{weekday:"short"}); }
+  function weekdayLong(d){ return d.toLocaleDateString("de-AT",{weekday:"long"}); }
+  function monthLabel(d){ return d.toLocaleDateString("de-AT",{month:"long",year:"numeric"}); }
+  function isFree(name){ return !name; }
+  function isGuest(name){ return name === "Gast" || (!!name && name.indexOf("Gast:") === 0); }
+  function guestName(name){ return name && name.indexOf("Gast:")===0 ? name.slice(5).trim() : ""; }
+  function initials(name){
+    if(!name) return "?";
+    var clean = name.replace(/[^A-Za-zÄÖÜäöüß]/g,"");
+    return clean.charAt(0).toUpperCase() + clean.charAt(1).toLowerCase();
+  }
+  function playerLabel(name){
+    if(isFree(name)) return "Platz frei";
+    if(!isGuest(name)) return name;
+    var g = guestName(name);
+    return g ? g+" (Gast)" : "Gast";
+  }
+  function avatarHtml(name){
+    if(isFree(name)) return '<span class="avatar">+</span>';
+    if(isGuest(name)) return '<span class="avatar">G</span>';
+    return '<span class="avatar" style="background:'+(PLAYER_COLORS[name]||"#8A7F84")+'">'+esc(initials(name))+'</span>';
+  }
+  function playing(entry){ return entry.players.filter(function(p){ return !isFree(p); }); }
+  function freeCount(entry){ return entry.players.filter(isFree).length; }
+  function plaetzeText(n){ return n + (n===1 ? " Platz frei" : " Plätze frei"); }
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ toastEl.classList.remove("show"); }, 2000);
+  }
+
+  // Firebase verwirft leere Werte und leere Arrays – hier wieder auffüllen.
+  function normalizeEntry(e){
+    var pl = [];
+    var raw = e.players || [];
+    for(var i=0;i<SLOTS;i++){ pl.push(raw[i] ? raw[i] : ""); }
+    e.players = pl;
+    var ab = e.absent || [];
+    if(!Array.isArray(ab)) ab = Object.keys(ab).map(function(k){ return ab[k]; });
+    e.absent = ab.filter(Boolean);
+    e.holiday = !!e.holiday;
+    return e;
+  }
+  function normalizeSchedule(data){
+    var list = Array.isArray(data) ? data : Object.keys(data).map(function(k){ return data[k]; });
+    return list.filter(function(e){ return e && e.date; }).map(normalizeEntry)
+      .sort(function(a,b){ return parseDate(a.date) - parseDate(b.date); });
+  }
+
+  // ---------- Laden / Speichern ----------
+  async function loadSchedule(){
+    try{
+      var res = await fetch(dbUrl("/schedule"));
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      var data = await res.json();
+      if(data){
+        schedule = normalizeSchedule(data);
+      }else{
+        schedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
+        await saveSchedule(true);
+      }
+    }catch(e){
+      if(!schedule) schedule = JSON.parse(JSON.stringify(DEFAULT_SCHEDULE));
+      showToast("Keine Verbindung zur Datenbank – bitte Internet prüfen.");
+    }
+  }
+  async function saveSchedule(silent){
+    try{
+      var res = await fetch(dbUrl("/schedule"), {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(schedule)});
+      if(!res.ok && !silent) showToast("Speichern fehlgeschlagen – bitte erneut versuchen.");
+      return res.ok;
+    }catch(e){
+      if(!silent) showToast("Speichern fehlgeschlagen – bitte Internet prüfen.");
+      return false;
+    }
+  }
+  async function loadSettings(){
+    try{
+      var res = await fetch(dbUrl("/settings"));
+      if(!res.ok) throw new Error();
+      var data = await res.json();
+      settings = Object.assign({}, DEFAULT_SETTINGS, data || {});
+    }catch(e){}
+  }
+  async function saveSettings(){
+    try{
+      var res = await fetch(dbUrl("/settings"), {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(settings)});
+      if(!res.ok) throw new Error();
+      showToast("Abo-Daten gespeichert.");
+    }catch(e){ showToast("Speichern fehlgeschlagen – bitte erneut versuchen."); }
+  }
+
+  // ---------- Getränkerunde ----------
+  var runden = [];
+  var rundenBusy = 0;
+  var showAllRunden = false;
+  function newId(){ return "r"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+  async function loadRunden(){
+    if(rundenBusy > 0) return;
+    try{
+      var res = await fetch(dbUrl("/runden"));
+      if(!res.ok) throw new Error();
+      var data = await res.json();
+      var list = [];
+      if(data){
+        Object.keys(data).forEach(function(k){
+          var e = data[k];
+          if(e && e.player) list.push({id:k, player:e.player, date:e.date||"", paid:!!e.paid, ts:e.ts||0});
+        });
+      }
+      list.sort(function(a,b){ return b.ts - a.ts; });
+      runden = list;
+    }catch(e){}
+  }
+  async function putRunde(path, body){
+    var res = await fetch(dbUrl("/runden"+path), {method:"PUT", headers:{"Content-Type":"application/json"}, body:body});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+  }
+  async function addRunde(player){
+    var ev = {player:player, date:isoToday(), paid:false, ts:Date.now()};
+    var id = newId();
+    runden.unshift({id:id, player:player, date:ev.date, paid:false, ts:ev.ts});
+    renderStats();
+    rundenBusy++;
+    try{ await putRunde("/"+id, JSON.stringify(ev)); showToast(player+" ist eine Runde schuldig."); }
+    catch(e){ runden = runden.filter(function(x){ return x.id !== id; }); renderStats(); showToast("Speichern fehlgeschlagen – bitte erneut versuchen."); }
+    finally{ rundenBusy--; }
+  }
+  async function setRundePaid(id, paid){
+    var item = runden.filter(function(x){ return x.id === id; })[0];
+    if(!item) return;
+    var old = item.paid; item.paid = paid; renderStats();
+    rundenBusy++;
+    try{ await putRunde("/"+id+"/paid", JSON.stringify(paid)); }
+    catch(e){ item.paid = old; renderStats(); showToast("Speichern fehlgeschlagen – bitte erneut versuchen."); }
+    finally{ rundenBusy--; }
+  }
+  async function deleteRunde(id){
+    var idx = runden.findIndex(function(x){ return x.id === id; });
+    if(idx === -1) return;
+    var removed = runden.splice(idx,1)[0]; renderStats();
+    rundenBusy++;
+    try{ await putRunde("/"+id, "null"); }
+    catch(e){ runden.push(removed); runden.sort(function(a,b){ return b.ts - a.ts; }); renderStats(); showToast("Löschen fehlgeschlagen – bitte erneut versuchen."); }
+    finally{ rundenBusy--; }
+  }
+
+  function renderRundenSection(){
+    var counts = {};
+    PLAYERS.forEach(function(p){ counts[p] = {open:0, paid:0}; });
+    runden.forEach(function(e){ if(counts[e.player]){ if(e.paid) counts[e.player].paid++; else counts[e.player].open++; } });
+    function totalOf(p){ return counts[p].open + counts[p].paid; }
+    var order = PLAYERS.slice().sort(function(a,b){ return (totalOf(b)-totalOf(a)) || (PLAYERS.indexOf(a)-PLAYERS.indexOf(b)); });
+    var max = Math.max.apply(null, order.map(totalOf).concat([1]));
+    var totalAll = 0, totalOpen = 0;
+    PLAYERS.forEach(function(p){ totalAll += totalOf(p); totalOpen += counts[p].open; });
+
+    var html = '<div class="month-group"><p class="month-title">Getränkerunde</p><div class="net-divider"></div>'
+      + '<p class="stats-note" style="margin:0 2px 12px;">Wer den Schläger fallen lässt, zahlt nach dem Spiel eine Runde. Einspruch ist nicht vorgesehen. Zum Eintragen auf das Plus tippen.</p>'
+      + '<div class="stats-table" style="margin-top:0;">';
+    order.forEach(function(p){
+      var c = counts[p];
+      html += '<div class="stats-row">'
+        + avatarHtml(p)
+        + '<span class="stats-name">'+esc(p)+'</span>'
+        + '<span class="runde-info">'
+        +   '<span class="stats-bar-wrap"><span class="stats-bar" style="width:'+Math.round(totalOf(p)/max*100)+'%;background:'+PLAYER_COLORS[p]+';"></span></span>'
+        +   '<span class="runde-meta">'+c.open+' offen · '+c.paid+' bezahlt</span>'
+        + '</span>'
+        + '<button class="runde-add" data-runde-add="'+esc(p)+'" aria-label="Runde für '+esc(p)+' eintragen">+</button>'
+        + '</div>';
+    });
+    html += '</div>';
+
+    if(totalAll === 0){
+      html += '<p class="stats-note">Bisher ist noch kein Schläger am Boden gelandet.</p>';
+    }else{
+      var leaders = order.filter(function(p){ return totalOf(p) === max; });
+      html += '<span class="status-badge tied" style="margin-top:12px;">Spitzenreiterin: '+esc(leaders.join(", "))+' ('+(leaders.length>1?'je ':'')+max+(max===1?' Runde':' Runden')+')</span>';
+      html += '<p class="stats-note" style="margin-top:8px;">Gesamt: '+totalAll+(totalAll===1?' Runde':' Runden')
+        + (totalOpen>0 ? ', davon '+totalOpen+' offen.' : ', alle beglichen.')+'</p>';
+      var shown = showAllRunden ? runden : runden.slice(0,8);
+      html += '<p class="runde-sub">Protokoll</p>';
+      shown.forEach(function(e){
+        html += '<div class="runde-log">'
+          + avatarHtml(e.player)
+          + '<span class="log-text"><b>'+esc(e.player)+'</b> · '+(e.date ? fmtDDMMYYYY(parseDate(e.date)) : "")+'</span>'
+          + '<button class="log-paid'+(e.paid?' is-paid':'')+'" data-runde-paid="'+esc(e.id)+'">'+(e.paid?'bezahlt':'offen')+'</button>'
+          + '<button class="log-del" data-runde-del="'+esc(e.id)+'" aria-label="Eintrag löschen">×</button>'
+          + '</div>';
+      });
+      if(runden.length > 8){
+        html += '<button class="link-btn" id="rundenToggle">'+(showAllRunden ? 'Weniger anzeigen' : 'Alle '+runden.length+' anzeigen')+'</button>';
+      }
+    }
+    return html + '</div>';
+  }
+
+  // ---------- Ergebnisse ----------
+  function emptySets(){ return [{a:null,b:null},{a:null,b:null},{a:null,b:null}]; }
+  function teamSize(entry){ var n = playing(entry).length; return (n===2 || n===4) ? n/2 : 0; }
+
+  function normalizeResult(entry){
+    var pl = playing(entry);
+    var size = teamSize(entry);
+    var r = entry.result || {};
+    var teamA = (r.teamA ? (Array.isArray(r.teamA) ? r.teamA : Object.keys(r.teamA).map(function(k){return r.teamA[k];})) : [])
+      .filter(function(n){ return pl.indexOf(n) !== -1; });
+    for(var i=0;i<pl.length && teamA.length<size;i++){ if(teamA.indexOf(pl[i]) === -1) teamA.push(pl[i]); }
+    teamA = teamA.slice(0,size);
+    var sets = emptySets();
+    var rawSets = r.sets || [];
+    for(var s=0;s<3;s++){
+      var x = rawSets[s];
+      if(x){
+        sets[s].a = (typeof x.a === "number") ? x.a : null;
+        sets[s].b = (typeof x.b === "number") ? x.b : null;
+      }
+    }
+    entry.result = {teamA:teamA, sets:sets};
+    return entry.result;
+  }
+  function getTeamB(entry){
+    var res = normalizeResult(entry);
+    return playing(entry).filter(function(p){ return res.teamA.indexOf(p) === -1; });
+  }
+  function computeMatchStatus(entry){
+    if(!teamSize(entry)) return {status:"keine", setsA:0, setsB:0};
+    var res = normalizeResult(entry);
+    var a=0, b=0, any=false;
+    res.sets.forEach(function(s){
+      if(s.a!=null && s.b!=null){ any = true; if(s.a>s.b) a++; else if(s.b>s.a) b++; }
+    });
+    var status = "offen";
+    if(any) status = a>b ? "A" : (b>a ? "B" : "unentschieden");
+    return {status:status, setsA:a, setsB:b};
+  }
+  function teamLabel(team){ return team.map(playerLabel).map(esc).join(" & "); }
+
+  // ---------- Rendering ----------
+  function metaLine(){
+    var parts = [];
+    if(settings.zeit) parts.push(esc(settings.zeit)+" Uhr");
+    if(settings.ort) parts.push(esc(settings.ort));
+    return parts.length ? parts.join(" · ") : "Uhrzeit und Ort unter „Statistik“ eintragen";
+  }
+  function renderHeader(){
+    var sub = "Winterabo 2026/27 · freitags, 14-täglich";
+    if(settings.zeit) sub += " · " + settings.zeit + " Uhr";
+    document.getElementById("headerSub").textContent = sub;
+  }
+
+  function findNextIndex(){
+    var today = todayMidnight();
+    for(var i=0;i<schedule.length;i++){ if(parseDate(schedule[i].date) >= today) return i; }
+    return -1;
+  }
+
+  function renderChip(name, dateIdx, slotIdx){
+    var cls = isFree(name) ? " free" : (isGuest(name) ? " guest" : "");
+    return '<button class="chip'+cls+'" data-date-idx="'+dateIdx+'" data-slot-idx="'+slotIdx+'">'
+      + avatarHtml(name) + '<span>'+esc(playerLabel(name))+'</span></button>';
+  }
+  function absentHtml(entry){
+    if(!entry.absent.length) return "";
+    return '<p class="absent"><b>Spielt nicht:</b> '+esc(entry.absent.join(", "))+'</p>';
+  }
+
+  function renderHero(){
+    var idx = findNextIndex();
+    var lines = '<svg class="hero-lines" viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="2"><rect x="10" y="10" width="80" height="80"/><line x1="10" y1="50" x2="90" y2="50"/><line x1="25" y1="10" x2="25" y2="90"/><line x1="75" y1="10" x2="75" y2="90"/><line x1="50" y1="30" x2="50" y2="70"/></svg>';
+    if(idx === -1){
+      heroEl.innerHTML = '<div class="hero-top" style="border-radius:20px;">'+lines+'<div class="hero-content"><p class="label">Saison abgeschlossen</p>'
+        + '<p class="hero-empty">Für diese Saison ist kein weiterer Termin eingetragen.</p></div></div>';
+      return;
+    }
+    var entry = schedule[idx];
+    var d = parseDate(entry.date);
+    var diff = Math.round((d - todayMidnight())/86400000);
+    var cd = diff===0 ? "Heute" : (diff===1 ? "Morgen" : "in "+diff+" Tagen");
+    var free = freeCount(entry);
+
+    var html = '<div class="hero-top">'+lines+'<div class="hero-content">'
+      + '<p class="label">Nächster Spieltag</p>'
+      + '<div class="date-row"><span class="date-main">'+weekdayLong(d)+', '+d.getDate()+'. '+d.toLocaleDateString("de-AT",{month:"long"})+'</span>'
+      + '<span class="countdown">'+cd+'</span></div>'
+      + '<p class="meta">'+metaLine()+'</p>';
+    if(free) html += '<span class="tag free">'+plaetzeText(free)+'</span>';
+    if(entry.holiday) html += '<span class="tag on-dark">Feiertag – Termin unsicher</span>';
+    html += '</div></div><div class="perforation"></div><div class="hero-bottom"><div class="players-grid">';
+    for(var s=0;s<SLOTS;s++) html += renderChip(entry.players[s], idx, s);
+    html += '</div>' + absentHtml(entry)
+      + '<p class="hint">'+(free ? 'Wer einspringen kann, tippt auf „Platz frei“. ' : '')+'Namen antippen, um zu tauschen oder einen Gast einzutragen.</p></div>';
+    heroEl.innerHTML = html;
+  }
+
+  function renderSeason(){
+    var today = todayMidnight();
+    var html = '<p class="hint" style="margin:14px 2px 4px;">Datum antippen, um einen Termin zu verschieben.</p>';
+    var lastMonth = "";
+    schedule.forEach(function(entry, i){
+      var d = parseDate(entry.date);
+      var m = monthLabel(d);
+      if(m !== lastMonth){
+        if(lastMonth) html += "</div></div>";
+        html += '<div class="month-group"><p class="month-title">'+m+'</p><div class="net-divider"></div><div class="timeline">';
+        lastMonth = m;
+      }
+      var free = freeCount(entry);
+      var tags = '';
+      if(entry.holiday) tags += '<span class="tag holiday">Feiertag</span>';
+      else if(free && d >= today) tags += '<span class="tag free">'+plaetzeText(free)+'</span>';
+      html += '<div class="row'+(d<today?' past':'')+'">'
+        + '<div class="row-date-wrap"><span class="row-date"><span class="wk">'+weekdayShort(d)+'</span> '
+        + '<input type="date" class="date-edit-input" data-date-idx="'+i+'" value="'+entry.date+'"></span>'+tags+'</div>'
+        + '<div class="row-players">';
+      for(var s=0;s<SLOTS;s++) html += renderChip(entry.players[s], i, s);
+      html += '</div>'+absentHtml(entry)+'</div>';
+    });
+    seasonEl.innerHTML = html + "</div></div>";
+  }
+
+  function buildTeamSelect(dateIdx, slotIdx, players, selected){
+    var opts = players.map(function(p){
+      return '<option value="'+esc(p)+'"'+(p===selected?' selected':'')+'>'+esc(playerLabel(p))+'</option>';
+    }).join("");
+    return '<select class="team-select" data-date-idx="'+dateIdx+'" data-slot-idx="'+slotIdx+'">'+opts+'</select>';
+  }
+
+  function renderResults(){
+    var tally = {};
+    PLAYERS.forEach(function(p){ tally[p] = {w:0,l:0}; });
+    schedule.forEach(function(entry){
+      var st = computeMatchStatus(entry);
+      if(st.status!=="A" && st.status!=="B") return;
+      var res = normalizeResult(entry), tb = getTeamB(entry);
+      var win = st.status==="A" ? res.teamA : tb, lose = st.status==="A" ? tb : res.teamA;
+      win.forEach(function(n){ if(tally[n]) tally[n].w++; });
+      lose.forEach(function(n){ if(tally[n]) tally[n].l++; });
+    });
+    var maxTotal = Math.max.apply(null, PLAYERS.map(function(p){ return tally[p].w+tally[p].l; }).concat([1]));
+    var html = '<div class="bilanz-table">';
+    PLAYERS.forEach(function(p){
+      var t = tally[p], total = t.w+t.l;
+      var scale = total ? total/maxTotal*100 : 0, wp = total ? t.w/total : 0;
+      html += '<div class="bilanz-row">'+avatarHtml(p)+'<span class="bilanz-name">'+esc(p)+'</span>'
+        + '<span class="bilanz-bar-wrap"><span class="bilanz-bar-win" style="width:'+(scale*wp)+'%"></span><span class="bilanz-bar-loss" style="width:'+(scale*(1-wp))+'%"></span></span>'
+        + '<span class="bilanz-num">'+t.w+' S · '+t.l+' N</span></div>';
+    });
+    html += '</div><p class="stats-note">Sieg oder Niederlage zählt für alle Spielerinnen einer Seite, sobald ein Spiel entschieden ist. Bei vier Spielerinnen wird ein Doppel gewertet, bei zwei ein Einzel. Gäste erscheinen nicht in der Bilanz.</p>';
+
+    var today = todayMidnight(), lastMonth = "";
+    schedule.forEach(function(entry, i){
+      var d = parseDate(entry.date), m = monthLabel(d);
+      if(m !== lastMonth){
+        if(lastMonth) html += "</div></div>";
+        html += '<div class="month-group"><p class="month-title">'+m+'</p><div class="net-divider"></div><div class="timeline">';
+        lastMonth = m;
+      }
+      html += '<div class="row'+(d<today?' past':'')+'"><div class="row-date-wrap"><span class="row-date"><span class="wk">'+weekdayShort(d)+'</span> '+fmtDDMMYYYY(d)+'</span>'
+        + (entry.holiday ? '<span class="tag holiday">Feiertag</span>' : '')+'</div>';
+
+      var size = teamSize(entry);
+      if(!size){
+        var n = playing(entry).length;
+        html += '<span class="status-badge">Keine Wertung bei '+n+(n===1?' Spielerin':' Spielerinnen')+'</span></div>';
+        return;
+      }
+      var res = normalizeResult(entry), tb = getTeamB(entry), st = computeMatchStatus(entry);
+      var pl = playing(entry);
+      var showThird = expandedThirdSet[entry.date] || res.sets[2].a!=null || res.sets[2].b!=null;
+
+      html += '<div class="match-teams"><div class="team-selects">';
+      for(var k=0;k<size;k++) html += buildTeamSelect(i, k, pl, res.teamA[k]);
+      html += '</div><span class="vs-label">gegen</span><div class="team-selects">';
+      tb.forEach(function(p){ html += '<span class="team-static">'+esc(playerLabel(p))+'</span>'; });
+      html += '</div></div>';
+
+      for(var s=0;s<(showThird?3:2);s++){
+        html += '<div class="sets-row"><span class="set-label">Satz '+(s+1)+'</span>'
+          + '<input type="number" inputmode="numeric" min="0" max="30" data-date-idx="'+i+'" data-set-idx="'+s+'" data-side="a" value="'+(res.sets[s].a!=null?res.sets[s].a:'')+'">'
+          + '<span class="colon">:</span>'
+          + '<input type="number" inputmode="numeric" min="0" max="30" data-date-idx="'+i+'" data-set-idx="'+s+'" data-side="b" value="'+(res.sets[s].b!=null?res.sets[s].b:'')+'"></div>';
+      }
+      if(!showThird) html += '<button class="link-btn" data-expand-date="'+entry.date+'">+ 3. Satz</button><br>';
+
+      var cls = (st.status==="A"||st.status==="B") ? "decided" : (st.status==="unentschieden" ? "tied" : "");
+      var txt;
+      if(st.status==="A") txt = teamLabel(res.teamA)+(size===1?' gewinnt':' gewinnen')+' ('+st.setsA+':'+st.setsB+')';
+      else if(st.status==="B") txt = teamLabel(tb)+(size===1?' gewinnt':' gewinnen')+' ('+st.setsB+':'+st.setsA+')';
+      else if(st.status==="unentschieden") txt = 'Unentschieden nach '+(st.setsA+st.setsB)+' Sätzen';
+      else txt = 'Ergebnis noch offen';
+      html += '<span class="status-badge '+cls+'">'+txt+'</span></div>';
+    });
+    resultsEl.innerHTML = html + "</div></div>";
+  }
+
+  function renderStats(){
+    var counts = {}, guests = 0, total = 0;
+    PLAYERS.forEach(function(p){ counts[p] = 0; });
+    schedule.forEach(function(entry){
+      playing(entry).forEach(function(name){
+        total++;
+        if(isGuest(name)) guests++;
+        else if(counts.hasOwnProperty(name)) counts[name]++;
+      });
+    });
+    var preis = parseFloat(String(settings.preis).replace(",", "."));
+    var hasPreis = preis > 0 && total > 0;
+    var proEinsatz = hasPreis ? preis/total : 0;
+    var max = Math.max.apply(null, PLAYERS.map(function(p){ return counts[p]; }).concat([1]));
+
+    var html = '<div class="month-group"><p class="month-title">Einsätze'+(hasPreis?' und Kosten':'')+'</p><div class="net-divider"></div>'
+      + '<div class="stats-table" style="margin-top:0;">';
+    PLAYERS.forEach(function(p){
+      var c = counts[p];
+      html += '<div class="stats-row">'+avatarHtml(p)+'<span class="stats-name">'+esc(p)+'</span>'
+        + '<span class="stats-bar-wrap"><span class="stats-bar" style="width:'+Math.round(c/max*100)+'%;background:'+PLAYER_COLORS[p]+';"></span></span>'
+        + '<span class="stats-num">'+c+(c===1?' Einsatz':' Einsätze')+(hasPreis?' · €'+Math.round(c*proEinsatz):'')+'</span></div>';
+    });
+    if(guests){
+      html += '<div class="stats-row">'+avatarHtml("Gast")+'<span class="stats-name">Gäste</span>'
+        + '<span class="stats-bar-wrap"><span class="stats-bar" style="width:'+Math.round(guests/max*100)+'%;background:var(--clay);"></span></span>'
+        + '<span class="stats-num">'+guests+(guests===1?' Einsatz':' Einsätze')+(hasPreis?' · €'+Math.round(guests*proEinsatz):'')+'</span></div>';
+    }
+    html += '</div><p class="stats-note">'+schedule.length+' Termine, '+total+' belegte Plätze, '+(schedule.length*SLOTS-total)+' Plätze frei. ';
+    html += hasPreis
+      ? 'Der Abopreis von €'+preis.toFixed(2).replace(".",",")+' wird auf die tatsächlich belegten Plätze aufgeteilt (≈ €'+proEinsatz.toFixed(2).replace(".",",")+' pro Einsatz). Wer öfter spielt, zahlt mehr.'
+      : 'Sobald unten der Abopreis eingetragen ist, rechnet die App die Kostenanteile mit.';
+    html += '</p></div>';
+
+    html += '<div class="month-group"><p class="month-title">Abo-Daten</p><div class="net-divider"></div><div class="settings">'
+      + '<label><span>Uhrzeit</span><input data-setting="zeit" placeholder="z. B. 18:00–19:00" value="'+esc(settings.zeit)+'"></label>'
+      + '<label><span>Ort</span><input data-setting="ort" placeholder="z. B. Tennishalle …" value="'+esc(settings.ort)+'"></label>'
+      + '<label><span>Abopreis (€)</span><input data-setting="preis" inputmode="decimal" placeholder="Gesamtpreis" value="'+esc(settings.preis)+'"></label>'
+      + '</div></div>';
+
+    statsEl.innerHTML = renderRundenSection() + html;
+  }
+
+  function renderAll(){ renderHeader(); renderHero(); renderSeason(); renderResults(); renderStats(); }
+
+  // ---------- Auswahl-Sheet ----------
+  function openSheet(dateIdx, slotIdx){
+    editTarget = {dateIdx:dateIdx, slotIdx:slotIdx};
+    var entry = schedule[dateIdx];
+    var current = entry.players[slotIdx];
+    var d = parseDate(entry.date);
+    sheetTitle.textContent = isFree(current) ? "Platz besetzen" : "Spielerin ändern";
+    sheetSub.textContent = weekdayLong(d)+", "+fmtDDMMYYYY(d);
+    var html = "";
+    PLAYERS.forEach(function(p){
+      var isCur = p === current;
+      var elsewhere = !isCur && entry.players.indexOf(p) !== -1;
+      var note = elsewhere ? '<span class="note">bereits dabei · tauschen</span>' : (entry.absent.indexOf(p)!==-1 ? '<span class="note">hat abgesagt</span>' : '');
+      html += '<button data-name="'+esc(p)+'" class="'+(isCur?"current":"")+'" style="'+(isCur?"border-left-color:"+PLAYER_COLORS[p]+";":"")+'">'
+        + avatarHtml(p) + '<span>'+esc(p)+'</span>'+note+'</button>';
+    });
+    var gCur = isGuest(current);
+    html += '<button data-name="Gast" class="'+(gCur?"current":"")+'" style="'+(gCur?"border-left-color:var(--clay);":"")+'">'
+      + '<span class="avatar" style="background:transparent;border:1.5px dashed var(--clay);color:var(--clay);">G</span><span>Gastspielerin</span></button>';
+    if(!isFree(current)){
+      html += '<button data-name="" >'+avatarHtml("")+'<span>Platz freigeben</span></button>';
+    }
+    sheetOptions.innerHTML = html;
+    guestRow.classList.remove("open");
+    guestInput.value = guestName(current);
+    overlay.classList.add("open");
+  }
+  function closeSheet(){ overlay.classList.remove("open"); editTarget = null; }
+
+  async function applyChoice(name){
+    if(!editTarget) return;
+    var entry = schedule[editTarget.dateIdx];
+    var slot = editTarget.slotIdx;
+    var prev = entry.players[slot];
+    if(name && !isGuest(name)){
+      var other = entry.players.indexOf(name);
+      if(other !== -1 && other !== slot) entry.players[other] = prev; // tauschen
+      entry.absent = entry.absent.filter(function(a){ return a !== name; });
+    }
+    entry.players[slot] = name;
+    closeSheet();
+    renderAll();
+    var ok = await saveSchedule(false);
+    if(ok) showToast(name ? "Gespeichert." : "Platz ist jetzt frei.");
+  }
+
+  // ---------- Ereignisse ----------
+  document.addEventListener("change", async function(e){
+    var t = e.target;
+    if(t.classList && t.classList.contains("date-edit-input")){
+      var idx = parseInt(t.getAttribute("data-date-idx"),10);
+      var nd = t.value;
+      if(nd && schedule[idx] && nd !== schedule[idx].date){
+        schedule[idx].date = nd;
+        schedule.sort(function(a,b){ return parseDate(a.date) - parseDate(b.date); });
+        renderAll();
+        if(await saveSchedule(false)) showToast("Termin verschoben auf "+fmtDDMMYYYY(parseDate(nd))+".");
+      }
+    }else if(t.hasAttribute && t.hasAttribute("data-setting")){
+      settings[t.getAttribute("data-setting")] = t.value.trim();
+      renderHeader(); renderHero();
+      await saveSettings();
+      renderStats();
+    }
+  });
+
+  document.addEventListener("click", function(e){
+    var t = e.target;
+    if(!t || !t.closest) return;
+    var chip = t.closest(".chip");
+    if(chip && chip.dataset.dateIdx !== undefined){
+      openSheet(parseInt(chip.dataset.dateIdx,10), parseInt(chip.dataset.slotIdx,10));
+      return;
+    }
+    var add = t.closest("[data-runde-add]");
+    if(add){ addRunde(add.getAttribute("data-runde-add")); return; }
+    var paid = t.closest("[data-runde-paid]");
+    if(paid){
+      var id = paid.getAttribute("data-runde-paid");
+      var item = runden.filter(function(x){ return x.id === id; })[0];
+      if(item) setRundePaid(id, !item.paid);
+      return;
+    }
+    var del = t.closest("[data-runde-del]");
+    if(del){
+      if(confirm("Diesen Eintrag aus dem Protokoll streichen?")) deleteRunde(del.getAttribute("data-runde-del"));
+      return;
+    }
+    if(t.closest("#rundenToggle")){ showAllRunden = !showAllRunden; renderStats(); }
+  });
+
+  sheetOptions.addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if(!btn) return;
+    var name = btn.getAttribute("data-name");
+    if(name === "Gast"){ guestRow.classList.add("open"); guestInput.focus(); }
+    else applyChoice(name);
+  });
+  document.getElementById("guestConfirm").addEventListener("click", function(){
+    var v = guestInput.value.trim();
+    applyChoice(v ? "Gast: "+v : "Gast");
+  });
+  guestInput.addEventListener("keydown", function(e){ if(e.key === "Enter") document.getElementById("guestConfirm").click(); });
+  document.getElementById("sheetClose").addEventListener("click", closeSheet);
+  overlay.addEventListener("click", function(e){ if(e.target === overlay) closeSheet(); });
+
+  resultsEl.addEventListener("change", async function(e){
+    var t = e.target;
+    if(t.classList.contains("team-select")){
+      var entry = schedule[parseInt(t.getAttribute("data-date-idx"),10)];
+      var slot = parseInt(t.getAttribute("data-slot-idx"),10);
+      var res = normalizeResult(entry);
+      var nv = t.value;
+      var other = res.teamA.indexOf(nv);
+      if(other !== -1 && other !== slot) res.teamA[other] = res.teamA[slot];
+      res.teamA[slot] = nv;
+      renderResults();
+      await saveSchedule(false);
+    }else if(t.tagName === "INPUT" && t.getAttribute("data-set-idx") !== null){
+      var entry2 = schedule[parseInt(t.getAttribute("data-date-idx"),10)];
+      var res2 = normalizeResult(entry2);
+      var raw = t.value.trim();
+      var num = raw === "" ? null : parseInt(raw,10);
+      if(num !== null && isNaN(num)) num = null;
+      res2.sets[parseInt(t.getAttribute("data-set-idx"),10)][t.getAttribute("data-side")] = num;
+      renderResults();
+      await saveSchedule(false);
+    }
+  });
+  resultsEl.addEventListener("click", function(e){
+    var btn = e.target.closest ? e.target.closest("[data-expand-date]") : null;
+    if(btn){ expandedThirdSet[btn.getAttribute("data-expand-date")] = true; renderResults(); }
+  });
+
+  function showTab(which){
+    ["Season","Results","Stats"].forEach(function(n){
+      document.getElementById("tab"+n).classList.toggle("active", n===which);
+    });
+    seasonEl.style.display = which==="Season" ? "" : "none";
+    resultsEl.style.display = which==="Results" ? "" : "none";
+    statsEl.style.display = which==="Stats" ? "" : "none";
+  }
+  document.getElementById("tabSeason").addEventListener("click", function(){ showTab("Season"); });
+  document.getElementById("tabResults").addEventListener("click", function(){ showTab("Results"); });
+  document.getElementById("tabStats").addEventListener("click", function(){ showTab("Stats"); });
+
+  async function reloadAll(){ await Promise.all([loadSchedule(), loadSettings(), loadRunden()]); }
+
+  document.getElementById("refreshBtn").addEventListener("click", async function(){
+    var btn = this;
+    btn.classList.add("spin");
+    await reloadAll();
+    renderAll();
+    setTimeout(function(){ btn.classList.remove("spin"); }, 400);
+  });
+
+  // Alle 12 Sekunden abgleichen – aber nicht, während jemand gerade tippt.
+  setInterval(async function(){
+    if(!isConfigured() || overlay.classList.contains("open")) return;
+    var a = document.activeElement;
+    if(a && (a.tagName === "INPUT" || a.tagName === "SELECT")) return;
+    await reloadAll();
+    renderAll();
+  }, 12000);
+
+  (async function init(){
+    if(!isConfigured()){
+      heroEl.innerHTML = '<div class="hero-top" style="border-radius:20px;"><div class="hero-content"><p class="label">Einrichtung nötig</p>'
+        + '<p class="hero-empty">Bitte zuerst die Datenbank-URL im Code eintragen (Variable FIREBASE_DB_URL ganz oben im Script).</p></div></div>';
+      return;
+    }
+    await reloadAll();
+    renderAll();
+  })();
+})();
+</script>
+</body>
+</html>
